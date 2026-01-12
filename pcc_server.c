@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
+#include <signal.h>
 
 #define GENERAL_ERROR (1)
 #define GENERAL_SUCCESS (0)
@@ -30,6 +31,11 @@ void print_pcc_statistics() {
             printf("char '%c' : %u times\n", (char)c, count);
         }
     }
+}
+
+void sigint_handler(int signum) {
+    printf("SIGINT received, exiting gracefully...\n");
+    sigint_received = true;
 }
 
 int handle_new_client(int server_fd) {
@@ -58,6 +64,8 @@ int run_server(uint16_t port) {
     int server_fd = -1;
     struct sockaddr_in serv_addr = {0};
     socklen_t addrsize = sizeof(struct sockaddr_in);
+    struct sigaction act = {0};
+    act.sa_handler = sigint_handler;
 
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1) {
@@ -82,6 +90,11 @@ int run_server(uint16_t port) {
 
     if (0 != listen(server_fd, LISTEN_QUEUE_SIZE)) {
         perror("listen failed");
+        goto cleanup;
+    }
+
+    if (0 != sigaction(SIGINT, &act, NULL)) {
+        perror("sigaction failed");
         goto cleanup;
     }
 
