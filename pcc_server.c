@@ -11,12 +11,25 @@
 
 #define LISTEN_QUEUE_SIZE (10)
 #define AMOUNT_OF_PRINTABLE_CHARS (126-32+1)
+#define PRINTABLE_LOWER_BOUND (32)
+#define PRINTABLE_UPPER_BOUND (126)
+#define PRINTABLE_TO_INDEX(c) ((c) - PRINTABLE_LOWER_BOUND)
 
 uint32_t pcc_total[AMOUNT_OF_PRINTABLE_CHARS] = {0};
+uint32_t clients_count = 0;
 bool sigint_received = false;
 
 bool is_printable(char c) {
-    return (32 <= c && c <= 126);
+    return (PRINTABLE_LOWER_BOUND <= c && c <= PRINTABLE_UPPER_BOUND);
+}
+
+void print_pcc_statistics() {
+    for (int c = PRINTABLE_LOWER_BOUND; c <= PRINTABLE_UPPER_BOUND; c++) {
+        int count = pcc_total[PRINTABLE_TO_INDEX(c)];
+        if (count > 0) {
+            printf("char '%c' : %u times\n", (char)c, count);
+        }
+    }
 }
 
 int handle_new_client(int server_fd) {
@@ -27,9 +40,10 @@ int handle_new_client(int server_fd) {
     client_fd = accept(server_fd, NULL, NULL);
     if (client_fd == -1) {
         perror("accept failed");
-        return GENERAL_ERROR;
+        goto cleanup;
     }
 
+    clients_count++;
     return_code = GENERAL_SUCCESS;
 cleanup:
     if (client_fd != -1) {
@@ -76,6 +90,9 @@ int run_server(uint16_t port) {
             goto cleanup;
         }
     }
+
+    print_pcc_statistics();
+    printf("Served %u client(s) successfully\n", clients_count);
 
     return_code = GENERAL_SUCCESS;
 cleanup:
